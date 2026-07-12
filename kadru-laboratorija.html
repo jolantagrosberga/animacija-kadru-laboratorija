@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kadru laboratorija · Mini-flipbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-page:#E9E8EE;
+    --bg-panel:#FFFFFF;
+    --bg-panel-2:#F1EEF9;
+    --violet:#7A2BD9;
+    --violet-soft:#C9BAE6;
+    --violet-deep:#4B1690;
+    --pink:#E0308F;
+    --text:#231531;
+    --text-muted:#6E6480;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh;
+    background:radial-gradient(circle at 50% -10%, #F6F5F9, var(--bg-page) 60%);
+    color:var(--text); font-family:'Nunito', sans-serif; padding:1.5rem 1rem 3rem;
+  }
+  .wrap{max-width:1040px; margin:0 auto;}
+  header{text-align:center; margin-bottom:1.2rem;}
+  .eyebrow{font-weight:800; letter-spacing:.14em; text-transform:uppercase; font-size:.75rem; color:var(--pink);}
+  h1{
+    font-family:'Bangers', cursive; font-weight:400; letter-spacing:.04em;
+    font-size:clamp(2.1rem,6vw,3.4rem); color:var(--violet);
+    text-shadow:3px 3px 0 var(--violet-soft); margin:.3rem 0 .5rem;
+  }
+  .version-badge{
+    display:inline-block; font-family:'Nunito',sans-serif; font-weight:800;
+    font-size:.75rem; letter-spacing:.08em; text-transform:uppercase;
+    background:var(--violet); color:#fff; padding:.3rem .9rem; border-radius:999px; margin-bottom:.9rem;
+  }
+  .lead{max-width:640px; margin:0 auto; color:var(--text-muted); font-size:1rem; line-height:1.5;}
+
+  .stage{display:flex; flex-wrap:wrap; justify-content:center; gap:1.6rem; margin:2rem 0 1.4rem; align-items:flex-start;}
+  .panel{
+    background:var(--bg-panel); border:2px solid var(--violet); border-radius:var(--radius);
+    padding:1.1rem 1.2rem 1.4rem; box-shadow:6px 6px 0 var(--violet-soft); text-align:center;
+  }
+  .draw-panel{width:min(500px, 100%);}
+  .preview-panel{width:min(300px, 100%);}
+  .strip-panel{width:100%; text-align:left;}
+  .panel-title{font-family:'Bangers', cursive; font-weight:400; color:var(--pink); font-size:1.3rem; letter-spacing:.03em; margin:0 0 .1rem; display:inline-block;}
+  .panel-sub{font-family:'Nunito',sans-serif; font-weight:600; color:var(--text-muted); font-size:.78rem; display:block; margin-bottom:.7rem;}
+  .panel-sub span{color:var(--violet); font-weight:800;}
+
+  .canvas-wrap{
+    position:relative; width:100%; max-width:440px; aspect-ratio:1/1; margin:0 auto;
+    background:#ffffff; border-radius:14px; overflow:hidden;
+    box-shadow:0 0 0 3px var(--bg-panel-2), 6px 6px 0 var(--violet-soft);
+    touch-action:none;
+  }
+  .canvas-wrap canvas{position:absolute; top:0; left:0; width:100%; height:100%;}
+  #drawCanvas{cursor:crosshair;}
+
+  .toolbar{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:.9rem; margin-top:1rem;}
+  .swatches{display:flex; gap:.4rem; align-items:center; position:relative;}
+  .swatch{
+    width:28px; height:28px; border-radius:50%; border:3px solid transparent; cursor:pointer; padding:0;
+  }
+  .swatch.active{border-color:var(--pink); box-shadow:0 0 0 3px rgba(224,48,143,.2);}
+  .eraser-btn{
+    width:28px; height:28px; border-radius:50%; border:3px solid var(--violet-soft);
+    background:var(--bg-panel-2); color:var(--text); cursor:pointer; font-size:.85rem; line-height:1;
+  }
+  .eraser-btn.active{border-color:var(--pink); color:var(--pink); box-shadow:0 0 0 3px rgba(224,48,143,.2);}
+
+  .custom-swatch{
+    background:conic-gradient(red,orange,yellow,limegreen,cyan,blue,violet,red);
+    position:relative;
+  }
+  .mixer-popover{
+    display:none; position:absolute; top:38px; left:50%; transform:translateX(-50%);
+    background:var(--bg-panel); border:2px solid var(--violet); border-radius:14px;
+    box-shadow:4px 4px 0 var(--violet-soft); padding:.9rem 1rem 1rem; width:min(272px,80vw); z-index:20;
+    flex-direction:column; gap:.5rem; text-align:left;
+  }
+  .mixer-popover.open{display:flex;}
+  .mixer-preview{width:100%; height:34px; border-radius:8px; border:2px solid var(--violet-soft); margin-bottom:.1rem;}
+  .mixer-label{font-size:.72rem; font-weight:700; color:var(--text-muted);}
+  .hue-grid{display:grid; grid-template-columns:repeat(8, 1fr); gap:4px;}
+  .hue-swatch{
+    width:100%; aspect-ratio:1/1; border-radius:5px; border:2px solid transparent; cursor:pointer; padding:0;
+  }
+  .hue-swatch.active{border-color:var(--text); box-shadow:0 0 0 2px var(--pink);}
+  .mixer-popover input[type=range]{width:100%; accent-color:var(--violet);}
+
+  .sizes{display:flex; gap:.4rem;}
+  .size-btn{
+    width:30px; height:30px; border-radius:8px; border:2px solid var(--violet-soft);
+    background:var(--bg-panel-2); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .size-btn.active{border-color:var(--pink);}
+  .size-btn .dot{border-radius:50%; background:var(--text);}
+
+  .actions{display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;}
+  .btn-secondary{
+    font-family:'Nunito',sans-serif; font-weight:700; font-size:.78rem;
+    background:transparent; color:var(--violet); border:2px solid var(--violet-soft);
+    border-radius:999px; padding:.35rem .8rem; cursor:pointer; transition:.15s;
+  }
+  .btn-secondary:hover{border-color:var(--pink); color:var(--pink);}
+  .onion-toggle{display:flex; align-items:center; gap:.35rem; font-size:.78rem; font-weight:700; color:var(--text-muted); cursor:pointer;}
+  .onion-toggle input{accent-color:var(--pink);}
+
+  #previewCanvas{
+    width:100%; max-width:220px; aspect-ratio:1/1; background:#ffffff; border-radius:14px;
+    box-shadow:0 0 0 3px var(--bg-panel-2), 6px 6px 0 var(--violet-soft); display:block; margin:0 auto;
+  }
+  .controls-mini{display:flex; flex-direction:column; align-items:center; gap:.6rem; margin-top:1.1rem;}
+  .btn-primary{
+    font-family:'Nunito',sans-serif; font-weight:800; font-size:.9rem;
+    background:var(--violet); color:#fff; border:none;
+    border-radius:999px; padding:.5rem 1.2rem; cursor:pointer; transition:transform .12s;
+  }
+  .btn-primary:hover{transform:scale(1.06);}
+  .btn-primary:active{transform:scale(.96);}
+  .slider-group{display:flex; flex-direction:column; gap:.25rem; width:100%; max-width:220px;}
+  .slider-group label{font-size:.78rem; font-weight:700; color:var(--text-muted); text-align:center;}
+  .slider-group span{color:var(--violet);}
+  input[type=range]{width:100%; accent-color:var(--pink);}
+  .preview-counter{font-size:.78rem; color:var(--text-muted); margin-top:.5rem; text-align:center;}
+
+  .frame-strip{display:flex; gap:.6rem; overflow-x:auto; padding:.3rem .1rem .6rem;}
+  .thumb{
+    position:relative; flex:0 0 auto; width:72px; height:72px; border-radius:10px; overflow:hidden;
+    border:3px solid var(--violet-soft); cursor:pointer; background:#ffffff;
+  }
+  .thumb.active{border-color:var(--pink); box-shadow:0 0 0 3px rgba(224,48,143,.2);}
+  .thumb img, .thumb-blank{width:100%; height:100%; object-fit:contain; display:block; background:#fff;}
+  .thumb-del{
+    position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%;
+    background:var(--pink); color:#fff; border:none; font-size:.65rem; line-height:1; cursor:pointer;
+  }
+  .thumb-num{
+    position:absolute; bottom:1px; left:3px; font-size:.6rem; font-weight:800; color:var(--violet);
+    background:rgba(255,255,255,.85); border-radius:4px; padding:0 3px;
+  }
+  .thumb-add{
+    flex:0 0 auto; width:72px; height:72px; border-radius:10px; border:3px dashed var(--violet-soft);
+    background:transparent; color:var(--violet-soft); font-size:1.6rem; cursor:pointer;
+  }
+  .thumb-add:hover{border-color:var(--pink); color:var(--pink);}
+  .strip-note{font-size:.75rem; color:var(--text-muted); margin-top:.2rem;}
+
+  .info-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-top:1.4rem;}
+  @media(max-width:680px){.info-grid{grid-template-columns:1fr;}}
+  .info-card{background:var(--bg-panel); border:2px solid var(--violet); border-radius:var(--radius); padding:1rem 1.2rem; text-align:left; box-shadow:6px 6px 0 var(--violet-soft);}
+  .info-card h3{font-family:'Bangers',cursive; font-weight:400; color:var(--violet); font-size:1.05rem; margin:0 0 .5rem; letter-spacing:.02em;}
+  .info-card p, .info-card li{color:var(--text-muted); font-size:.88rem; line-height:1.5;}
+  .info-card ul{margin:0; padding-left:1.1rem;}
+  .info-card li{margin-bottom:.3rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">8.5 · Tradicionālā animācija</div>
+    <h1>Kadru laboratorija</h1>
+    <div class="version-badge">Mini-flipbook</div>
+    <p class="lead">Uzzīmē 4&ndash;8 nelielus kadrus, katru nedaudz citādu nekā iepriekšējo, un vēro, kā tavs zīmējums &ldquo;atdzīvojas&rdquo;! Caurspīdīgais iepriekšējā kadra kontūrs (onion skin) palīdzēs zīmēt precīzi.</p>
+  </header>
+
+  <main class="stage">
+    <section class="panel draw-panel">
+      <div class="panel-title">Zīmē</div>
+      <span class="panel-sub">aktīvais kadrs: <span id="frameCounter">1 / 1</span></span>
+
+      <div class="canvas-wrap">
+        <canvas id="onionCanvas" width="440" height="440"></canvas>
+        <canvas id="drawCanvas" width="440" height="440"></canvas>
+      </div>
+
+      <div class="toolbar">
+        <div class="swatches" id="swatchesRow">
+          <button class="swatch active" data-color="#1A1A1A" style="background:#1A1A1A" title="Melns"></button>
+          <button class="swatch" data-color="#7A1FD1" style="background:#7A1FD1" title="Violets"></button>
+          <button class="swatch" data-color="#E01E7A" style="background:#E01E7A" title="Rozā"></button>
+          <button class="swatch" data-color="#1E6FE0" style="background:#1E6FE0" title="Zils"></button>
+          <button class="eraser-btn" id="eraserBtn" title="Dzēšgumija">⌫</button>
+          <button class="swatch custom-swatch" id="customSwatchBtn" title="Jaukt krāsu"></button>
+
+          <div class="mixer-popover" id="mixerPopover">
+            <div class="mixer-preview" id="mixerPreview"></div>
+            <span class="mixer-label">Izvēlies toni</span>
+            <div class="hue-grid" id="hueGrid"></div>
+            <span class="mixer-label">Gaišāk / tumšāk</span>
+            <input type="range" id="lightRange" min="12" max="88" value="55">
+          </div>
+        </div>
+
+        <div class="sizes">
+          <button class="size-btn active" data-size="3" title="Tievs"><span class="dot" style="width:5px;height:5px"></span></button>
+          <button class="size-btn" data-size="7" title="Vidējs"><span class="dot" style="width:9px;height:9px"></span></button>
+          <button class="size-btn" data-size="14" title="Biezs"><span class="dot" style="width:14px;height:14px"></span></button>
+        </div>
+        <div class="actions">
+          <button id="undoBtn" class="btn-secondary">↶ Atsaukt</button>
+          <button id="dupBtn" class="btn-secondary">⧉ Dublēt kadru</button>
+          <button id="clearBtn" class="btn-secondary">🗑 Tīrīt kadru</button>
+          <label class="onion-toggle"><input type="checkbox" id="onionToggle" checked> Onion skin</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="panel-title">Atskaņotājs</div>
+      <span class="panel-sub">tava animācija</span>
+      <canvas id="previewCanvas" width="220" height="220"></canvas>
+      <div class="controls-mini">
+        <button id="playBtn" class="btn-primary">⏸ Pauze</button>
+        <div class="slider-group">
+          <label for="fpsRange">Ātrums: <span id="fpsVal">6</span> kadri/s</label>
+          <input type="range" id="fpsRange" min="1" max="15" value="6">
+        </div>
+        <div class="preview-counter" id="previewCounter">Kadrs 1 / 1</div>
+      </div>
+    </section>
+  </main>
+
+  <section class="panel strip-panel">
+    <div class="panel-title">Kadri</div>
+    <div class="frame-strip" id="frameStrip"></div>
+    <p class="strip-note">Maksimums: 12 kadri. Klikšķini uz kadra, lai to rediģētu.</p>
+  </section>
+
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>Kas ir onion skin?</h3>
+      <p>&ldquo;Onion skin&rdquo; (sīpola miza) ir animatoru paņēmiens &mdash; caur pašreizējo kadru redzi iepriekšējā kadra caurspīdīgu kontūru, lai zīmētu nākamo kustību precīzi nedaudz pārvietotu. Pirmie animatori šo pašu principu izmantoja, zīmējot uz plāna papīra virs apgaismota galda.</p>
+    </div>
+    <div class="info-card">
+      <h3>Padomi labai animācijai</h3>
+      <ul>
+        <li>Katrā kadrā maini tikai nedaudz &mdash; liels lēciens izskatīsies raustīts.</li>
+        <li>4&ndash;6 kadri jau var radīt vienkāršu ciklu (piemēram, mirkšķināšanu vai lēkšanu).</li>
+        <li>Vienkāršas formas vieglāk animēt nekā sarežģītus zīmējumus.</li>
+        <li>Atskaņo bieži, lai pārbaudītu, vai kustība izskatās dabiska.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const CANVAS = 440;
+  const MAX_FRAMES = 12;
+
+  const drawCanvas = document.getElementById('drawCanvas');
+  const onionCanvas = document.getElementById('onionCanvas');
+  const drawCtx = drawCanvas.getContext('2d');
+  const onionCtx = onionCanvas.getContext('2d');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const previewCtx = previewCanvas.getContext('2d');
+
+  const frameStripEl = document.getElementById('frameStrip');
+  const frameCounterEl = document.getElementById('frameCounter');
+  const previewCounterEl = document.getElementById('previewCounter');
+  const playBtn = document.getElementById('playBtn');
+  const fpsRange = document.getElementById('fpsRange');
+  const fpsVal = document.getElementById('fpsVal');
+  const onionToggle = document.getElementById('onionToggle');
+  const undoBtn = document.getElementById('undoBtn');
+  const dupBtn = document.getElementById('dupBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const eraserBtn = document.getElementById('eraserBtn');
+
+  const customSwatchBtn = document.getElementById('customSwatchBtn');
+  const mixerPopover = document.getElementById('mixerPopover');
+  const mixerPreview = document.getElementById('mixerPreview');
+  const hueGrid = document.getElementById('hueGrid');
+  const lightRange = document.getElementById('lightRange');
+  const HUE_COUNT = 24;
+  const FIXED_SAT = 75;
+  let selectedHue = 280;
+
+  for(let i=0;i<HUE_COUNT;i++){
+    const h = i*(360/HUE_COUNT);
+    const btn = document.createElement('button');
+    btn.className = 'hue-swatch';
+    btn.style.background = `hsl(${h} ${FIXED_SAT}% 55%)`;
+    btn.dataset.hue = h;
+    if(Math.round(h)===selectedHue) btn.classList.add('active');
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      selectedHue = h;
+      document.querySelectorAll('.hue-swatch').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      applyMixedColor();
+    });
+    hueGrid.appendChild(btn);
+  }
+
+  let frames = [{ dataURL: null }];
+  let currentIndex = 0;
+  let currentColor = '#1A1A1A';
+  let currentSize = 3;
+  let eraserMode = false;
+  let onionEnabled = true;
+  let undoSnapshot = null;
+  let drawing = false;
+  let lastPos = null;
+  let previewImages = [null];
+
+  function getPos(e){
+    const rect = drawCanvas.getBoundingClientRect();
+    const scaleX = drawCanvas.width/rect.width;
+    const scaleY = drawCanvas.height/rect.height;
+    return { x:(e.clientX-rect.left)*scaleX, y:(e.clientY-rect.top)*scaleY };
+  }
+
+  function strokeSegment(p1,p2){
+    drawCtx.lineJoin='round'; drawCtx.lineCap='round';
+    drawCtx.lineWidth = eraserMode ? currentSize*2.4 : currentSize;
+    drawCtx.globalCompositeOperation = eraserMode ? 'destination-out' : 'source-over';
+    drawCtx.strokeStyle = currentColor;
+    drawCtx.beginPath();
+    drawCtx.moveTo(p1.x,p1.y);
+    drawCtx.lineTo(p2.x,p2.y);
+    drawCtx.stroke();
+  }
+  function drawDot(p){
+    drawCtx.globalCompositeOperation = eraserMode ? 'destination-out' : 'source-over';
+    drawCtx.fillStyle = currentColor;
+    drawCtx.beginPath();
+    drawCtx.arc(p.x,p.y,(eraserMode?currentSize*2.4:currentSize)/2,0,Math.PI*2);
+    drawCtx.fill();
+  }
+
+  drawCanvas.addEventListener('pointerdown', e=>{
+    drawCanvas.setPointerCapture(e.pointerId);
+    undoSnapshot = drawCtx.getImageData(0,0,CANVAS,CANVAS);
+    drawing = true;
+    lastPos = getPos(e);
+    drawDot(lastPos);
+  });
+  drawCanvas.addEventListener('pointermove', e=>{
+    if(!drawing) return;
+    const pos = getPos(e);
+    strokeSegment(lastPos,pos);
+    lastPos = pos;
+  });
+  function endStroke(){
+    if(!drawing) return;
+    drawing = false;
+    saveCurrentFrame();
+  }
+  drawCanvas.addEventListener('pointerup', endStroke);
+  drawCanvas.addEventListener('pointerleave', endStroke);
+  drawCanvas.addEventListener('pointercancel', endStroke);
+
+  function clearActiveStates(){
+    document.querySelectorAll('.swatch').forEach(b=>b.classList.remove('active'));
+    eraserBtn.classList.remove('active');
+  }
+
+  document.querySelectorAll('.swatches > .swatch:not(.custom-swatch)').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      clearActiveStates();
+      btn.classList.add('active');
+      eraserMode = false;
+      currentColor = btn.dataset.color;
+      mixerPopover.classList.remove('open');
+    });
+  });
+  eraserBtn.addEventListener('click', ()=>{
+    eraserMode = true;
+    clearActiveStates();
+    eraserBtn.classList.add('active');
+    mixerPopover.classList.remove('open');
+  });
+  document.querySelectorAll('.size-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSize = parseInt(btn.dataset.size,10);
+    });
+  });
+
+  function mixColor(){
+    return `hsl(${selectedHue} ${FIXED_SAT}% ${lightRange.value}%)`;
+  }
+  function renderMixerSwatch(){
+    const c = mixColor();
+    customSwatchBtn.style.background = c;
+    mixerPreview.style.background = c;
+    lightRange.style.background = `linear-gradient(to right, hsl(${selectedHue} ${FIXED_SAT}% 8%), hsl(${selectedHue} ${FIXED_SAT}% 92%))`;
+  }
+  function applyMixedColor(){
+    renderMixerSwatch();
+    currentColor = mixColor();
+    eraserMode = false;
+    clearActiveStates();
+    customSwatchBtn.classList.add('active');
+  }
+  lightRange.addEventListener('input', applyMixedColor);
+  customSwatchBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    mixerPopover.classList.toggle('open');
+    applyMixedColor();
+  });
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('#swatchesRow')){
+      mixerPopover.classList.remove('open');
+    }
+  });
+
+  undoBtn.addEventListener('click', ()=>{
+    if(undoSnapshot){ drawCtx.putImageData(undoSnapshot,0,0); saveCurrentFrame(); }
+  });
+  clearBtn.addEventListener('click', ()=>{
+    undoSnapshot = drawCtx.getImageData(0,0,CANVAS,CANVAS);
+    drawCtx.clearRect(0,0,CANVAS,CANVAS);
+    saveCurrentFrame();
+  });
+  dupBtn.addEventListener('click', ()=>{
+    if(frames.length>=MAX_FRAMES) return;
+    frames.splice(currentIndex+1,0,{ dataURL: frames[currentIndex].dataURL });
+    currentIndex += 1;
+    loadFrame(currentIndex);
+    renderFrameStrip();
+    rebuildPreviewImages();
+  });
+  onionToggle.addEventListener('change', ()=>{
+    onionEnabled = onionToggle.checked;
+    updateOnion();
+  });
+
+  function saveCurrentFrame(){
+    frames[currentIndex].dataURL = drawCanvas.toDataURL('image/png');
+    renderFrameStrip();
+    rebuildPreviewImages();
+  }
+
+  function loadFrame(i){
+    currentIndex = i;
+    drawCtx.clearRect(0,0,CANVAS,CANVAS);
+    if(frames[i].dataURL){
+      const img = new Image();
+      img.onload = ()=> drawCtx.drawImage(img,0,0,CANVAS,CANVAS);
+      img.src = frames[i].dataURL;
+    }
+    updateOnion();
+    frameCounterEl.textContent = `${currentIndex+1} / ${frames.length}`;
+  }
+
+  function updateOnion(){
+    onionCtx.clearRect(0,0,CANVAS,CANVAS);
+    if(!onionEnabled) return;
+    const pi = currentIndex-1;
+    if(pi>=0 && frames[pi].dataURL){
+      const img = new Image();
+      img.onload = ()=>{
+        onionCtx.globalAlpha = 0.22;
+        onionCtx.drawImage(img,0,0,CANVAS,CANVAS);
+        onionCtx.globalAlpha = 1;
+      };
+      img.src = frames[pi].dataURL;
+    }
+  }
+
+  function renderFrameStrip(){
+    frameStripEl.innerHTML = '';
+    frames.forEach((f,i)=>{
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb' + (i===currentIndex ? ' active' : '');
+      if(f.dataURL){
+        const img = document.createElement('img');
+        img.src = f.dataURL;
+        thumb.appendChild(img);
+      } else {
+        const blank = document.createElement('div');
+        blank.className = 'thumb-blank';
+        thumb.appendChild(blank);
+      }
+      const num = document.createElement('span');
+      num.className = 'thumb-num';
+      num.textContent = i+1;
+      thumb.appendChild(num);
+
+      if(frames.length>1){
+        const del = document.createElement('button');
+        del.className = 'thumb-del';
+        del.textContent = '×';
+        del.addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          deleteFrame(i);
+        });
+        thumb.appendChild(del);
+      }
+
+      thumb.addEventListener('click', ()=>{
+        if(i!==currentIndex){ loadFrame(i); renderFrameStrip(); }
+      });
+      frameStripEl.appendChild(thumb);
+    });
+
+    if(frames.length<MAX_FRAMES){
+      const add = document.createElement('button');
+      add.className = 'thumb-add';
+      add.textContent = '+';
+      add.addEventListener('click', addFrame);
+      frameStripEl.appendChild(add);
+    }
+  }
+
+  function addFrame(){
+    if(frames.length>=MAX_FRAMES) return;
+    frames.push({ dataURL: null });
+    currentIndex = frames.length-1;
+    loadFrame(currentIndex);
+    renderFrameStrip();
+    rebuildPreviewImages();
+  }
+
+  function deleteFrame(i){
+    if(frames.length<=1) return;
+    frames.splice(i,1);
+    if(currentIndex>=frames.length) currentIndex = frames.length-1;
+    loadFrame(currentIndex);
+    renderFrameStrip();
+    rebuildPreviewImages();
+  }
+
+  function rebuildPreviewImages(){
+    previewImages = frames.map(f=>{
+      if(!f.dataURL) return null;
+      const img = new Image();
+      img.src = f.dataURL;
+      return img;
+    });
+  }
+
+  let previewIndex = 0, previewPlaying = true, previewLast = null, fps = parseInt(fpsRange.value,10);
+
+  function drawPreviewFrame(idx){
+    previewCtx.clearRect(0,0,CANVAS,CANVAS);
+    previewCtx.fillStyle = '#ffffff';
+    previewCtx.fillRect(0,0,previewCanvas.width,previewCanvas.height);
+    const img = previewImages[idx];
+    if(img && img.complete){
+      previewCtx.drawImage(img,0,0,previewCanvas.width,previewCanvas.height);
+    }
+    previewCounterEl.textContent = `Kadrs ${idx+1} / ${frames.length}`;
+  }
+
+  function previewTick(now){
+    if(previewLast===null) previewLast = now;
+    const dt = (now-previewLast)/1000;
+    const interval = 1/fps;
+    if(previewPlaying && dt>=interval){
+      previewLast = now;
+      previewIndex = (previewIndex+1) % Math.max(frames.length,1);
+      drawPreviewFrame(previewIndex);
+    }
+    requestAnimationFrame(previewTick);
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    previewPlaying = !previewPlaying;
+    playBtn.textContent = previewPlaying ? '⏸ Pauze' : '▶ Spēlēt';
+    previewLast = null;
+  });
+  fpsRange.addEventListener('input', e=>{
+    fps = parseInt(e.target.value,10);
+    fpsVal.textContent = fps;
+  });
+
+  renderMixerSwatch();
+  renderFrameStrip();
+  loadFrame(0);
+  rebuildPreviewImages();
+  requestAnimationFrame(previewTick);
+})();
+</script>
+</body>
+</html>
